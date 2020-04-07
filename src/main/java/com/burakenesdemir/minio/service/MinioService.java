@@ -2,29 +2,28 @@ package com.burakenesdemir.minio.service;
 
 import com.google.api.client.util.Value;
 import io.minio.MinioClient;
+import io.minio.errors.*;
 import io.minio.messages.Bucket;
 import org.apache.commons.io.IOUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+import org.xmlpull.v1.XmlPullParserException;
 
 import javax.annotation.PostConstruct;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
-import java.util.HashMap;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.util.Date;
 import java.util.List;
-import java.util.Map;
 
 @Service
 public class MinioService {
-
-    @Value("${minio.buckek.name}")
-    String defaultBucketName;
-
-    @Value("${minio.default.folder}")
-    String defaultBaseFolder;
 
     @Autowired
     MinioClient minioClient;
@@ -37,26 +36,63 @@ public class MinioService {
         }
     }
 
-    public Map<String, String> uploadFile(String name, byte[] content) {
+    public File convertMultipartToFile(MultipartFile uploadedFile) throws IOException {
         String millis = String.valueOf(System.currentTimeMillis());
-        File file = new File("/deneme/" + millis + name);
-        file.canWrite();
-        file.canRead();
-        Map<String, String> result = new HashMap<>();
-        result.put("key", name);
-        try {
-            FileOutputStream iofs = new FileOutputStream(file);
-            iofs.write(content);
+        File file = new File(uploadedFile.getOriginalFilename());
 
-            minioClient.putObject("/deneme", "/" + name, file.getAbsolutePath());
-        } catch (Exception e) {
-            throw new RuntimeException(e.getMessage());
-        }
+        FileOutputStream fos = new FileOutputStream(file);
+        fos.write(uploadedFile.getBytes());
+        fos.close();
 
-        return result;
+        return file;
     }
 
-    public ResponseEntity getFile(String key) {
+    private void uploadFileToMinio(String fileName, File file) {
+        try {
+            minioClient.putObject("deneme", fileName, file.getAbsolutePath());
+        } catch (InvalidBucketNameException e) {
+            e.printStackTrace();
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (InvalidKeyException e) {
+            e.printStackTrace();
+        } catch (NoResponseException e) {
+            e.printStackTrace();
+        } catch (XmlPullParserException e) {
+            e.printStackTrace();
+        } catch (ErrorResponseException e) {
+            e.printStackTrace();
+        } catch (InternalException e) {
+            e.printStackTrace();
+        } catch (InvalidArgumentException e) {
+            e.printStackTrace();
+        } catch (InsufficientDataException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private String generateFileName(MultipartFile multiPart) {
+        return new Date().getTime() + "-" + multiPart.getOriginalFilename().replace(" ", "_");
+    }
+
+    public String uploadFile(MultipartFile multipartFile) {
+
+        String fileUrl = "";
+        try {
+            File file = convertMultipartToFile(multipartFile);
+            String fileName = generateFileName(multipartFile);
+            fileUrl = "http://64.*****" + "/" + "deneme" + "/" + fileName;
+            uploadFileToMinio(fileName, file);
+            file.delete();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return fileUrl;
+    }
+
+   /* public ResponseEntity getFile(String key) {
         try {
             InputStream obj = minioClient.getObject(defaultBucketName, defaultBaseFolder + "/" + key);
 
@@ -73,7 +109,7 @@ public class MinioService {
         }
         return null;
     }
-
+*/
     @PostConstruct
     public void init() {
     }

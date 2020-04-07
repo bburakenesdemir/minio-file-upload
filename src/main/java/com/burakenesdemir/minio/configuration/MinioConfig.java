@@ -11,7 +11,7 @@ public class MinioConfig {
     @Bean
     public MinioClient generateMinioClient() {
         try {
-            MinioClient client = new MinioClient("http://******", "****", "*****");
+            MinioClient client = new MinioClient("http://64*****", "*****", "*****");
             return client;
         } catch (Exception e) {
             throw new RuntimeException(e.getMessage());
